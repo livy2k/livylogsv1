@@ -1,0 +1,172 @@
+
+        <!DOCTYPE html>
+        <html data-theme="dark">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="https://cdn.jsdelivr.net/npm/daisyui@4.12.10/dist/full.min.css" rel="stylesheet" type="text/css" />
+            <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+            <script src="https://cdn.tailwindcss.com"></script>
+            <style>
+                :root { --starwars-blue: #00ecff; --starwars-red: #ff003c; --starwars-yellow: #ffe81f; --hud-bg: rgba(10, 15, 20, 0.9); }
+                body { font-family: 'JetBrains Mono', monospace; background-color: #05070a; background-image: radial-gradient(circle at 50% 50%, #1a202c 0%, #05070a 100%); }
+                h1, .font-orbitron { font-family: 'Orbitron', sans-serif; }
+                .swimlane-container { position: relative; min-width: 2100px; padding-top: 80px; }
+                .event-marker { position: absolute; transform: translateX(-50%); transition: all 0.2s; z-index: 90; }
+                .event-marker:hover { transform: translateX(-50%) scale(1.2); z-index: 150; }
+                .time-line { position: absolute; top: 0; bottom: 0; border-left: 1px solid rgba(0, 236, 255, 0.1); pointer-events: none; }
+                .mini-log { max-height: 160px; overflow-y: auto; scrollbar-width: thin; }
+                .mini-log::-webkit-scrollbar { width: 4px; }
+                .mini-log::-webkit-scrollbar-thumb { background: var(--starwars-blue); border-radius: 2px; }
+                .hud-border { border: 1px solid rgba(0, 236, 255, 0.2); box-shadow: 0 0 15px rgba(0, 236, 255, 0.1); }
+                .scanline { width: 100%; height: 100px; z-index: 5; background: linear-gradient(0deg, rgba(0, 236, 255, 0) 0%, rgba(0, 236, 255, 0.02) 50%, rgba(0, 236, 255, 0) 100%); position: absolute; animation: scan 8s linear infinite; pointer-events: none; }
+                @keyframes scan { from { top: -100px; } to { top: 100%; } }
+                .glow-text-blue { text-shadow: 0 0 10px rgba(0, 236, 255, 0.5); }
+                .player-row { transition: background 0.3s; z-index: 10; }
+                .player-row:hover { background: rgba(0, 236, 255, 0.05); z-index: 120; }
+                .sparkline { pointer-events: none; width: 100%; height: 100%; display: block; z-index: 10; opacity: 0.6; }
+                .graph-hover-layer { position: absolute; inset: 0; z-index: 40; cursor: default; }
+                .graph-crosshair { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(255, 255, 255, 0.35); pointer-events: none; }
+                .graph-tooltip { position: absolute; top: calc(100% + 8px); transform: translateX(-50%); pointer-events: none; z-index: 500; }
+                .event-detail-overlay { position: fixed; inset: 0; background: rgba(1, 6, 12, 0.52); z-index: 900; display: none; }
+                .event-detail-overlay.open { display: block; }
+                .event-detail-panel { position: fixed; left: 20px; top: 20px; width: min(460px, calc(100vw - 40px)); max-height: min(76vh, 700px); overflow: auto; z-index: 901; display: none; }
+                .event-detail-panel.open { display: block; }
+            </style>
+        </head>
+        <body class="min-h-screen p-4 md:p-8 text-slate-300">
+            <div class="max-w-[2350px] mx-auto relative">
+                <div class="flex flex-col md:flex-row justify-between items-stretch mb-8 hud-border bg-black/60 backdrop-blur-md p-6 rounded-lg border-l-4 border-l-primary gap-6 relative overflow-hidden">
+                    <div class="scanline"></div>
+                    <div class="relative z-10">
+                        <div class="flex items-center gap-4 mb-2">
+                            <div class="w-10 h-1 rounded-full bg-primary shadow-[0_0_15px_#00ecff]"></div>
+                            <h1 class="text-3xl font-black text-primary tracking-[0.2em] glow-text-blue uppercase">Livius Tactical Overlay</h1>
+                        </div>
+                        <p class="text-[10px] font-bold tracking-[0.4em] text-primary/60 uppercase ml-14">Sector 7-B Combat Data Feed • Encrypted Link Active</p>
+                    </div>
+                    <div class="flex items-center gap-6 relative z-10">
+                        <div class="flex flex-col items-end">
+                            <span class="text-[9px] font-black opacity-40 uppercase tracking-widest">Operation Clock</span>
+                            <span class="text-2xl font-orbitron font-black text-secondary glow-text-blue tracking-tighter">55<span class="text-xs ml-1">SEC</span></span>
+                        </div>
+                        <div class="w-px h-12 bg-white/10"></div>
+                        <div class="flex flex-col items-end">
+                            <span class="text-[9px] font-black opacity-40 uppercase tracking-widest">Detected Entities</span>
+                            <span class="text-2xl font-orbitron font-black text-accent glow-text-blue tracking-tighter">3<span class="text-xs ml-1">OBJ</span></span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="hud-border bg-black/40 rounded-lg p-2 overflow-x-auto overflow-y-visible relative">
+                    <div class="swimlane-container" style="height: 680px;">
+                        <div class="scanline"></div>
+                        <div class="time-line" style="left: 0.0%; border-left-color: rgba(0, 236, 255, 0.15);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 0.0%; top: 20px; transform: translateX(-50%);">000</div><div class="time-line" style="left: 9.090909090909092%; border-left-color: rgba(0, 236, 255, 0.05);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 9.090909090909092%; top: 20px; transform: translateX(-50%);">005</div><div class="time-line" style="left: 18.181818181818183%; border-left-color: rgba(0, 236, 255, 0.15);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 18.181818181818183%; top: 20px; transform: translateX(-50%);">010</div><div class="time-line" style="left: 27.27272727272727%; border-left-color: rgba(0, 236, 255, 0.05);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 27.27272727272727%; top: 20px; transform: translateX(-50%);">015</div><div class="time-line" style="left: 36.36363636363637%; border-left-color: rgba(0, 236, 255, 0.15);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 36.36363636363637%; top: 20px; transform: translateX(-50%);">020</div><div class="time-line" style="left: 45.45454545454545%; border-left-color: rgba(0, 236, 255, 0.05);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 45.45454545454545%; top: 20px; transform: translateX(-50%);">025</div><div class="time-line" style="left: 54.54545454545454%; border-left-color: rgba(0, 236, 255, 0.15);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 54.54545454545454%; top: 20px; transform: translateX(-50%);">030</div><div class="time-line" style="left: 63.63636363636363%; border-left-color: rgba(0, 236, 255, 0.05);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 63.63636363636363%; top: 20px; transform: translateX(-50%);">035</div><div class="time-line" style="left: 72.72727272727273%; border-left-color: rgba(0, 236, 255, 0.15);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 72.72727272727273%; top: 20px; transform: translateX(-50%);">040</div><div class="time-line" style="left: 81.81818181818183%; border-left-color: rgba(0, 236, 255, 0.05);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 81.81818181818183%; top: 20px; transform: translateX(-50%);">045</div><div class="time-line" style="left: 90.9090909090909%; border-left-color: rgba(0, 236, 255, 0.15);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 90.9090909090909%; top: 20px; transform: translateX(-50%);">050</div><div class="time-line" style="left: 100.0%; border-left-color: rgba(0, 236, 255, 0.05);"></div><div class="absolute text-[8px] font-black tracking-tighter text-primary/40" style="left: 100.0%; top: 20px; transform: translateX(-50%);">055</div>
+        
+                        <div class="absolute left-0 right-0 h-40 rounded border bg-black/20 flex items-center px-6 backdrop-blur-sm player-row" style="top: 90px;">
+                            <div class="w-60 flex-shrink-0 border-r border-white/10 mr-8 py-2 relative z-20">
+                                <span class="text-[8px] font-black opacity-30 uppercase tracking-[0.3em] mb-1 block">Entity Signature</span>
+                                <span class="text-lg font-orbitron font-black text-slate-200 truncate block tracking-widest">TEST_PILOT</span>
+                            </div>
+                            <div class="relative flex-grow h-full overflow-visible pr-4">
+                                <div class="h-full relative rounded border border-white/10 bg-black/20 overflow-visible">
+                                    <svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                        <polyline fill="rgba(255, 0, 60, 0.1)" stroke="rgba(255, 0, 60, 0.5)" stroke-width="1" points="0,100 0.0,40.07223693715386 9.090909090909092,31.55790994461836 18.181818181818183,61.16542258608235 27.27272727272727,47.73898386708404 36.36363636363637,50.62846135323862 45.45454545454545,20.67421141343607 54.54545454545454,24.62316397784734 63.63636363636363,70.392487358536 72.72727272727273,36.296653021911865 81.81818181818183,68.4469058511919 90.9090909090909,74.20659764026006 100.0,20.0 100,100" />
+                                        <polyline fill="none" stroke="rgba(0, 255, 150, 0.8)" stroke-width="1" points="0,100 0.0,88.19166867324826 9.090909090909092,81.48808090536961 18.181818181818183,81.87334457019023 27.27272727272727,97.6113652781122 36.36363636363637,86.28461353238623 45.45454545454545,81.96966048639538 54.54545454545454,91.44714664098242 63.63636363636363,89.98314471466409 72.72727272727273,93.700939080183 81.81818181818183,88.55766915482783 90.9090909090909,93.64314953045991 100.0,96.84083794847099 100,100" />
+                                    </svg>
+                                    <div class="graph-hover-layer" data-player="Test_Pilot" data-max-time="55" data-points="[{&quot;t&quot;: 0, &quot;d&quot;: 3111, &quot;h&quot;: 613, &quot;d_sources&quot;: [[&quot;Target&quot;, 3111]], &quot;h_sources&quot;: [[&quot;Target&quot;, 613]]}, {&quot;t&quot;: 5, &quot;d&quot;: 3553, &quot;h&quot;: 961, &quot;d_sources&quot;: [[&quot;Target&quot;, 3553]], &quot;h_sources&quot;: [[&quot;Target&quot;, 961]]}, {&quot;t&quot;: 10, &quot;d&quot;: 2016, &quot;h&quot;: 941, &quot;d_sources&quot;: [[&quot;Target&quot;, 2016]], &quot;h_sources&quot;: [[&quot;Target&quot;, 941]]}, {&quot;t&quot;: 15, &quot;d&quot;: 2713, &quot;h&quot;: 124, &quot;d_sources&quot;: [[&quot;Target&quot;, 2713]], &quot;h_sources&quot;: [[&quot;Target&quot;, 124]]}, {&quot;t&quot;: 20, &quot;d&quot;: 2563, &quot;h&quot;: 712, &quot;d_sources&quot;: [[&quot;Target&quot;, 2563]], &quot;h_sources&quot;: [[&quot;Target&quot;, 712]]}, {&quot;t&quot;: 25, &quot;d&quot;: 4118, &quot;h&quot;: 936, &quot;d_sources&quot;: [[&quot;Target&quot;, 4118]], &quot;h_sources&quot;: [[&quot;Target&quot;, 936]]}, {&quot;t&quot;: 30, &quot;d&quot;: 3913, &quot;h&quot;: 444, &quot;d_sources&quot;: [[&quot;Target&quot;, 3913]], &quot;h_sources&quot;: [[&quot;Target&quot;, 444]]}, {&quot;t&quot;: 35, &quot;d&quot;: 1537, &quot;h&quot;: 520, &quot;d_sources&quot;: [[&quot;Target&quot;, 1537]], &quot;h_sources&quot;: [[&quot;Target&quot;, 520]]}, {&quot;t&quot;: 40, &quot;d&quot;: 3307, &quot;h&quot;: 327, &quot;d_sources&quot;: [[&quot;Target&quot;, 3307]], &quot;h_sources&quot;: [[&quot;Target&quot;, 327]]}, {&quot;t&quot;: 45, &quot;d&quot;: 1638, &quot;h&quot;: 594, &quot;d_sources&quot;: [[&quot;Target&quot;, 1638]], &quot;h_sources&quot;: [[&quot;Target&quot;, 594]]}, {&quot;t&quot;: 50, &quot;d&quot;: 1339, &quot;h&quot;: 330, &quot;d_sources&quot;: [[&quot;Target&quot;, 1339]], &quot;h_sources&quot;: [[&quot;Target&quot;, 330]]}, {&quot;t&quot;: 55, &quot;d&quot;: 4153, &quot;h&quot;: 164, &quot;d_sources&quot;: [[&quot;Target&quot;, 4153]], &quot;h_sources&quot;: [[&quot;Target&quot;, 164]]}]">
+                                        <div class="graph-crosshair hidden"></div>
+                                        <div class="graph-tooltip hidden bg-[#0a0f14] border border-primary/40 px-3 py-2 rounded text-[9px] font-mono shadow-[0_0_30px_rgba(0,236,255,0.2)] min-w-[280px]"></div>
+                                    </div>
+                                </div>
+            <div class="event-marker event-clickable" data-event="{&quot;type&quot;: &quot;KD&quot;, &quot;time&quot;: 30, &quot;source&quot;: &quot;Test_Pilot&quot;, &quot;target&quot;: &quot;Someone&quot;, &quot;label&quot;: &quot;Heavy Strike&quot;, &quot;mini_log_html&quot;: &quot;&lt;div class=\&quot;flex justify-between py-1 border-b border-white/5 text-[9px] text-primary\&quot;&gt;&lt;span class=\&quot;opacity-40\&quot;&gt;+0.0s&lt;/span&gt;&lt;span class=\&quot;font-bold\&quot;&gt;Test_Pilot&lt;/span&gt;&lt;span&gt;&lt;span class=text-error&gt;-3913&lt;/span&gt; &lt;span class=text-success&gt;+444&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=\&quot;flex justify-between py-1 border-b border-white/5 text-[9px] \&quot;&gt;&lt;span class=\&quot;opacity-40\&quot;&gt;+0.0s&lt;/span&gt;&lt;span class=\&quot;font-bold\&quot;&gt;Enemy_Ace&lt;/span&gt;&lt;span&gt;&lt;span class=text-error&gt;-4732&lt;/span&gt; &lt;span class=text-success&gt;+997&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=\&quot;flex justify-between py-1 border-b border-white/5 text-[9px] \&quot;&gt;&lt;span class=\&quot;opacity-40\&quot;&gt;+0.0s&lt;/span&gt;&lt;span class=\&quot;font-bold\&quot;&gt;Support_Dr&lt;/span&gt;&lt;span&gt;&lt;span class=text-error&gt;-1652&lt;/span&gt; &lt;span class=text-success&gt;+751&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&quot;, &quot;player&quot;: &quot;Test_Pilot&quot;}" style="left: 54.54545454545454%; top: 50%; margin-top: -14px;"><div class="badge badge-error badge-sm font-black cursor-pointer">KD</div></div></div></div>
+                        <div class="absolute left-0 right-0 h-40 rounded border bg-black/20 flex items-center px-6 backdrop-blur-sm player-row" style="top: 270px;">
+                            <div class="w-60 flex-shrink-0 border-r border-white/10 mr-8 py-2 relative z-20">
+                                <span class="text-[8px] font-black opacity-30 uppercase tracking-[0.3em] mb-1 block">Entity Signature</span>
+                                <span class="text-lg font-orbitron font-black text-slate-200 truncate block tracking-widest">ENEMY_ACE</span>
+                            </div>
+                            <div class="relative flex-grow h-full overflow-visible pr-4">
+                                <div class="h-full relative rounded border border-white/10 bg-black/20 overflow-visible">
+                                    <svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                        <polyline fill="rgba(255, 0, 60, 0.1)" stroke="rgba(255, 0, 60, 0.5)" stroke-width="1" points="0,100 0.0,25.181137421574576 9.090909090909092,77.8668285772111 18.181818181818183,62.728192673547866 27.27272727272727,20.0 36.36363636363637,56.94798623760373 45.45454545454545,87.7109896782028 54.54545454545454,23.38393037846589 63.63636363636363,53.62882007690751 72.72727272727273,39.024488969844164 81.81818181818183,24.533495243877766 90.9090909090909,60.05666869054848 100.0,71.95709370572759 100,100" />
+                                        <polyline fill="none" stroke="rgba(0, 255, 150, 0.8)" stroke-width="1" points="0,100 0.0,96.35701275045537 9.090909090909092,88.32624974701477 18.181818181818183,95.40174053835256 27.27272727272727,90.33394049787492 36.36363636363637,98.8990082979154 45.45454545454545,97.97611819469743 54.54545454545454,83.8575187209067 63.63636363636363,98.7370977534912 72.72727272727273,96.84274438372799 81.81818181818183,92.39020441206233 90.9090909090909,90.49585104229914 100.0,95.46650475612225 100,100" />
+                                    </svg>
+                                    <div class="graph-hover-layer" data-player="Enemy_Ace" data-max-time="55" data-points="[{&quot;t&quot;: 0, &quot;d&quot;: 4621, &quot;h&quot;: 225, &quot;d_sources&quot;: [[&quot;Target&quot;, 4621]], &quot;h_sources&quot;: [[&quot;Target&quot;, 225]]}, {&quot;t&quot;: 5, &quot;d&quot;: 1367, &quot;h&quot;: 721, &quot;d_sources&quot;: [[&quot;Target&quot;, 1367]], &quot;h_sources&quot;: [[&quot;Target&quot;, 721]]}, {&quot;t&quot;: 10, &quot;d&quot;: 2302, &quot;h&quot;: 284, &quot;d_sources&quot;: [[&quot;Target&quot;, 2302]], &quot;h_sources&quot;: [[&quot;Target&quot;, 284]]}, {&quot;t&quot;: 15, &quot;d&quot;: 4941, &quot;h&quot;: 597, &quot;d_sources&quot;: [[&quot;Target&quot;, 4941]], &quot;h_sources&quot;: [[&quot;Target&quot;, 597]]}, {&quot;t&quot;: 20, &quot;d&quot;: 2659, &quot;h&quot;: 68, &quot;d_sources&quot;: [[&quot;Target&quot;, 2659]], &quot;h_sources&quot;: [[&quot;Target&quot;, 68]]}, {&quot;t&quot;: 25, &quot;d&quot;: 759, &quot;h&quot;: 125, &quot;d_sources&quot;: [[&quot;Target&quot;, 759]], &quot;h_sources&quot;: [[&quot;Target&quot;, 125]]}, {&quot;t&quot;: 30, &quot;d&quot;: 4732, &quot;h&quot;: 997, &quot;d_sources&quot;: [[&quot;Target&quot;, 4732]], &quot;h_sources&quot;: [[&quot;Target&quot;, 997]]}, {&quot;t&quot;: 35, &quot;d&quot;: 2864, &quot;h&quot;: 78, &quot;d_sources&quot;: [[&quot;Target&quot;, 2864]], &quot;h_sources&quot;: [[&quot;Target&quot;, 78]]}, {&quot;t&quot;: 40, &quot;d&quot;: 3766, &quot;h&quot;: 195, &quot;d_sources&quot;: [[&quot;Target&quot;, 3766]], &quot;h_sources&quot;: [[&quot;Target&quot;, 195]]}, {&quot;t&quot;: 45, &quot;d&quot;: 4661, &quot;h&quot;: 470, &quot;d_sources&quot;: [[&quot;Target&quot;, 4661]], &quot;h_sources&quot;: [[&quot;Target&quot;, 470]]}, {&quot;t&quot;: 50, &quot;d&quot;: 2467, &quot;h&quot;: 587, &quot;d_sources&quot;: [[&quot;Target&quot;, 2467]], &quot;h_sources&quot;: [[&quot;Target&quot;, 587]]}, {&quot;t&quot;: 55, &quot;d&quot;: 1732, &quot;h&quot;: 280, &quot;d_sources&quot;: [[&quot;Target&quot;, 1732]], &quot;h_sources&quot;: [[&quot;Target&quot;, 280]]}]">
+                                        <div class="graph-crosshair hidden"></div>
+                                        <div class="graph-tooltip hidden bg-[#0a0f14] border border-primary/40 px-3 py-2 rounded text-[9px] font-mono shadow-[0_0_30px_rgba(0,236,255,0.2)] min-w-[280px]"></div>
+                                    </div>
+                                </div>
+            <div class="event-marker event-clickable" data-event="{&quot;type&quot;: &quot;KD&quot;, &quot;time&quot;: 30, &quot;source&quot;: &quot;Enemy_Ace&quot;, &quot;target&quot;: &quot;Someone&quot;, &quot;label&quot;: &quot;Heavy Strike&quot;, &quot;mini_log_html&quot;: &quot;&lt;div class=\&quot;flex justify-between py-1 border-b border-white/5 text-[9px] \&quot;&gt;&lt;span class=\&quot;opacity-40\&quot;&gt;+0.0s&lt;/span&gt;&lt;span class=\&quot;font-bold\&quot;&gt;Test_Pilot&lt;/span&gt;&lt;span&gt;&lt;span class=text-error&gt;-3913&lt;/span&gt; &lt;span class=text-success&gt;+444&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=\&quot;flex justify-between py-1 border-b border-white/5 text-[9px] text-primary\&quot;&gt;&lt;span class=\&quot;opacity-40\&quot;&gt;+0.0s&lt;/span&gt;&lt;span class=\&quot;font-bold\&quot;&gt;Enemy_Ace&lt;/span&gt;&lt;span&gt;&lt;span class=text-error&gt;-4732&lt;/span&gt; &lt;span class=text-success&gt;+997&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=\&quot;flex justify-between py-1 border-b border-white/5 text-[9px] \&quot;&gt;&lt;span class=\&quot;opacity-40\&quot;&gt;+0.0s&lt;/span&gt;&lt;span class=\&quot;font-bold\&quot;&gt;Support_Dr&lt;/span&gt;&lt;span&gt;&lt;span class=text-error&gt;-1652&lt;/span&gt; &lt;span class=text-success&gt;+751&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&quot;, &quot;player&quot;: &quot;Enemy_Ace&quot;}" style="left: 54.54545454545454%; top: 50%; margin-top: -14px;"><div class="badge badge-error badge-sm font-black cursor-pointer">KD</div></div></div></div>
+                        <div class="absolute left-0 right-0 h-40 rounded border bg-black/20 flex items-center px-6 backdrop-blur-sm player-row" style="top: 450px;">
+                            <div class="w-60 flex-shrink-0 border-r border-white/10 mr-8 py-2 relative z-20">
+                                <span class="text-[8px] font-black opacity-30 uppercase tracking-[0.3em] mb-1 block">Entity Signature</span>
+                                <span class="text-lg font-orbitron font-black text-slate-200 truncate block tracking-widest">SUPPORT_DROID</span>
+                            </div>
+                            <div class="relative flex-grow h-full overflow-visible pr-4">
+                                <div class="h-full relative rounded border border-white/10 bg-black/20 overflow-visible">
+                                    <svg class="sparkline" viewBox="0 0 100 100" preserveAspectRatio="none">
+                                        <polyline fill="rgba(255, 0, 60, 0.1)" stroke="rgba(255, 0, 60, 0.5)" stroke-width="1" points="0,100 0.0,74.11812461944388 9.090909090909092,22.67911508017049 18.181818181818183,20.0 27.27272727272727,34.450984371828696 36.36363636363637,52.57154455043637 45.45454545454545,42.81307083417901 54.54545454545454,73.17637507611123 63.63636363636363,67.08747716663284 72.72727272727273,61.274609295717475 81.81818181818183,87.83844124213518 90.9090909090909,83.941546580069 100.0,73.69596103105337 100,100" />
+                                        <polyline fill="none" stroke="rgba(0, 255, 150, 0.8)" stroke-width="1" points="0,100 0.0,85.04566673432109 9.090909090909092,96.57398010960016 18.181818181818183,84.15262837426425 27.27272727272727,98.73350923482849 36.36363636363637,87.51370002029633 45.45454545454545,89.59204384006495 54.54545454545454,87.80596711995129 63.63636363636363,92.01136594276436 72.72727272727273,85.17556322305663 81.81818181818183,87.59488532575604 90.9090909090909,93.78120560178607 100.0,86.86421757661863 100,100" />
+                                    </svg>
+                                    <div class="graph-hover-layer" data-player="Support_Droid" data-max-time="55" data-points="[{&quot;t&quot;: 0, &quot;d&quot;: 1594, &quot;h&quot;: 921, &quot;d_sources&quot;: [[&quot;Target&quot;, 1594]], &quot;h_sources&quot;: [[&quot;Target&quot;, 921]]}, {&quot;t&quot;: 5, &quot;d&quot;: 4762, &quot;h&quot;: 211, &quot;d_sources&quot;: [[&quot;Target&quot;, 4762]], &quot;h_sources&quot;: [[&quot;Target&quot;, 211]]}, {&quot;t&quot;: 10, &quot;d&quot;: 4927, &quot;h&quot;: 976, &quot;d_sources&quot;: [[&quot;Target&quot;, 4927]], &quot;h_sources&quot;: [[&quot;Target&quot;, 976]]}, {&quot;t&quot;: 15, &quot;d&quot;: 4037, &quot;h&quot;: 78, &quot;d_sources&quot;: [[&quot;Target&quot;, 4037]], &quot;h_sources&quot;: [[&quot;Target&quot;, 78]]}, {&quot;t&quot;: 20, &quot;d&quot;: 2921, &quot;h&quot;: 769, &quot;d_sources&quot;: [[&quot;Target&quot;, 2921]], &quot;h_sources&quot;: [[&quot;Target&quot;, 769]]}, {&quot;t&quot;: 25, &quot;d&quot;: 3522, &quot;h&quot;: 641, &quot;d_sources&quot;: [[&quot;Target&quot;, 3522]], &quot;h_sources&quot;: [[&quot;Target&quot;, 641]]}, {&quot;t&quot;: 30, &quot;d&quot;: 1652, &quot;h&quot;: 751, &quot;d_sources&quot;: [[&quot;Target&quot;, 1652]], &quot;h_sources&quot;: [[&quot;Target&quot;, 751]]}, {&quot;t&quot;: 35, &quot;d&quot;: 2027, &quot;h&quot;: 492, &quot;d_sources&quot;: [[&quot;Target&quot;, 2027]], &quot;h_sources&quot;: [[&quot;Target&quot;, 492]]}, {&quot;t&quot;: 40, &quot;d&quot;: 2385, &quot;h&quot;: 913, &quot;d_sources&quot;: [[&quot;Target&quot;, 2385]], &quot;h_sources&quot;: [[&quot;Target&quot;, 913]]}, {&quot;t&quot;: 45, &quot;d&quot;: 749, &quot;h&quot;: 764, &quot;d_sources&quot;: [[&quot;Target&quot;, 749]], &quot;h_sources&quot;: [[&quot;Target&quot;, 764]]}, {&quot;t&quot;: 50, &quot;d&quot;: 989, &quot;h&quot;: 383, &quot;d_sources&quot;: [[&quot;Target&quot;, 989]], &quot;h_sources&quot;: [[&quot;Target&quot;, 383]]}, {&quot;t&quot;: 55, &quot;d&quot;: 1620, &quot;h&quot;: 809, &quot;d_sources&quot;: [[&quot;Target&quot;, 1620]], &quot;h_sources&quot;: [[&quot;Target&quot;, 809]]}]">
+                                        <div class="graph-crosshair hidden"></div>
+                                        <div class="graph-tooltip hidden bg-[#0a0f14] border border-primary/40 px-3 py-2 rounded text-[9px] font-mono shadow-[0_0_30px_rgba(0,236,255,0.2)] min-w-[280px]"></div>
+                                    </div>
+                                </div>
+            <div class="event-marker event-clickable" data-event="{&quot;type&quot;: &quot;KD&quot;, &quot;time&quot;: 30, &quot;source&quot;: &quot;Support_Droid&quot;, &quot;target&quot;: &quot;Someone&quot;, &quot;label&quot;: &quot;Heavy Strike&quot;, &quot;mini_log_html&quot;: &quot;&lt;div class=\&quot;flex justify-between py-1 border-b border-white/5 text-[9px] \&quot;&gt;&lt;span class=\&quot;opacity-40\&quot;&gt;+0.0s&lt;/span&gt;&lt;span class=\&quot;font-bold\&quot;&gt;Test_Pilot&lt;/span&gt;&lt;span&gt;&lt;span class=text-error&gt;-3913&lt;/span&gt; &lt;span class=text-success&gt;+444&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=\&quot;flex justify-between py-1 border-b border-white/5 text-[9px] \&quot;&gt;&lt;span class=\&quot;opacity-40\&quot;&gt;+0.0s&lt;/span&gt;&lt;span class=\&quot;font-bold\&quot;&gt;Enemy_Ace&lt;/span&gt;&lt;span&gt;&lt;span class=text-error&gt;-4732&lt;/span&gt; &lt;span class=text-success&gt;+997&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&lt;div class=\&quot;flex justify-between py-1 border-b border-white/5 text-[9px] text-primary\&quot;&gt;&lt;span class=\&quot;opacity-40\&quot;&gt;+0.0s&lt;/span&gt;&lt;span class=\&quot;font-bold\&quot;&gt;Support_Dr&lt;/span&gt;&lt;span&gt;&lt;span class=text-error&gt;-1652&lt;/span&gt; &lt;span class=text-success&gt;+751&lt;/span&gt;&lt;/span&gt;&lt;/div&gt;&quot;, &quot;player&quot;: &quot;Support_Droid&quot;}" style="left: 54.54545454545454%; top: 50%; margin-top: -14px;"><div class="badge badge-error badge-sm font-black cursor-pointer">KD</div></div></div></div>
+                    </div>
+                </div>
+                <div class="mt-12 pt-6 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-4 text-[8px] opacity-20">
+                    <div>LIVIUS ANALYSIS ENGINE V3.0 // TACTICAL OVERLAY</div>
+                    <div>CYCLE TIMESTAMP: 2026-07-20 18:27:04</div>
+                </div>
+            </div>
+            <div class="event-detail-overlay" id="eventDetailOverlay"></div>
+            <div class="event-detail-panel hud-border bg-[#0a0f14] rounded-lg p-4" id="eventDetailPanel">
+                <div class="flex justify-between items-center mb-3 border-b border-primary/20 pb-2">
+                    <div id="eventDetailType" class="text-[9px] font-black text-primary tracking-widest uppercase">Event</div>
+                    <button class="btn btn-xs btn-ghost" id="eventDetailClose">Close</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3 mb-3 text-[10px]">
+                    <div class="bg-black/40 p-2 rounded"><div class="opacity-40 mb-1">Source</div><div id="eventDetailSource" class="font-bold"></div></div>
+                    <div class="bg-black/40 p-2 rounded"><div class="opacity-40 mb-1">Target</div><div id="eventDetailTarget" class="font-bold"></div></div>
+                </div>
+                <div id="eventDetailLabel" class="bg-primary/5 p-2 rounded mb-3 text-[10px] italic"></div>
+                <div id="eventDetailLog" class="mini-log bg-black/60 rounded p-2"></div>
+            </div>
+            <script>
+                // ... Ported JS from generate_example_report.py (simplified) ...
+                const layers = document.querySelectorAll('.graph-hover-layer');
+                layers.forEach(l => {
+                    const pts = JSON.parse(l.dataset.points);
+                    const maxT = Number(l.dataset.maxTime);
+                    const tt = l.querySelector('.graph-tooltip');
+                    l.addEventListener('mousemove', e => {
+                        const x = e.clientX - l.getBoundingClientRect().left;
+                        const t = (x / l.offsetWidth) * maxT;
+                        const s = pts.reduce((prev, curr) => Math.abs(curr.t - t) < Math.abs(prev.t - t) ? curr : prev, pts[0]);
+                        tt.classList.remove('hidden'); tt.style.left = x+'px';
+                        tt.innerHTML = `<b>T+${t.toFixed(1)}s</b><br>DMG: ${s.d}<br>HEAL: ${s.h}`;
+                    });
+                    l.addEventListener('mouseleave', () => tt.classList.add('hidden'));
+                });
+                const markers = document.querySelectorAll('.event-clickable');
+                markers.forEach(m => m.addEventListener('click', e => {
+                    const p = JSON.parse(m.dataset.event);
+                    document.getElementById('eventDetailType').innerText = p.type + ' @ T+' + p.time.toFixed(1) + 's';
+                    document.getElementById('eventDetailSource').innerText = p.source;
+                    document.getElementById('eventDetailTarget').innerText = p.target;
+                    document.getElementById('eventDetailLabel').innerText = p.label;
+                    document.getElementById('eventDetailLog').innerHTML = p.mini_log_html;
+                    document.getElementById('eventDetailOverlay').classList.add('open');
+                    document.getElementById('eventDetailPanel').classList.add('open');
+                    document.getElementById('eventDetailPanel').style.left = e.clientX+'px';
+                    document.getElementById('eventDetailPanel').style.top = e.clientY+'px';
+                }));
+                document.getElementById('eventDetailOverlay').addEventListener('click', () => {
+                    document.getElementById('eventDetailOverlay').classList.remove('open');
+                    document.getElementById('eventDetailPanel').classList.remove('open');
+                });
+            </script>
+        </body></html>
+        
